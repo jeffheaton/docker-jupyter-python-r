@@ -7,8 +7,9 @@ This is a Docker image that I created to launch Jupyter notebooks that can be us
 
 Contains:
 
-* TensorFlow 2.0
-* Anaconda Python 3.7
+* TensorFlow 2.11
+* PyTorch 1.13.1
+* Anaconda Python 3.10
 * Note: this docker image previously contained R-lang; which has not been used in my course for some time.
 * Needed Python packages for my class
 
