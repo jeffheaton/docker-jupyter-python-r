@@ -1,63 +1,50 @@
-FROM ubuntu:20.10
+FROM ubuntu:22.04
+LABEL maintainer="Jeff Heaton <jeff@jeffheaton.com>"
 
-# Common, note that two updates are needed
+# Perform updates as root
+USER root
+WORKDIR /tmp
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y tzdata software-properties-common git vim wget libssl-dev && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y tzdata software-properties-common sudo build-essential git vim wget ffmpeg libssl-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/*
+
+# Create notebook user
+ENV NB_USER nbuser
+ENV NB_UID 1000
+ENV HOME /content/
+RUN useradd -m -s /bin/bash -d ${HOME} -N -G sudo -u $NB_UID $NB_USER
+WORKDIR ${HOME}
+USER ${NB_USER}
 
 # Miniconda
-RUN echo 'export PATH=/opt/conda/bin:$PATH' >> /root/.bashrc && \
+ENV MINI_PATH ${HOME}/miniconda
+RUN  \
     wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    /bin/bash ~/miniconda.sh -b -p ${MINI_PATH} && \
     rm ~/miniconda.sh && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    echo 'export PATH='+${MINI_PATH}+'/bin:$PATH' >> ${HOME}/.bashrc && \
+    rm -rf /tmp/*
+ENV PATH ${MINI_PATH}/bin:$PATH
+RUN conda init
 
-ENV PATH /opt/conda/bin:$PATH
+# Tensorflow
+RUN conda install -y jupyter && \
+    conda install -c conda-forge cudatoolkit=11.2.2 cudnn=8.1.0 && \ 
+    mkdir -p ${MINI_PATH}/etc/conda/activate.d && \
+    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > ${MINI_PATH}/etc/conda/activate.d/env_vars.sh && \
+    pip install --upgrade pip && \
+    pip install tensorflow==2.11.* && \
+    rm -rf /tmp/*
 
-RUN wget https://raw.githubusercontent.com/jeffheaton/t81_558_deep_learning/master/tensorflow.yml && \
-    conda install pip jupyter && \
-    conda env create -v -f tensorflow.yml && \ 
-    conda init bash && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN rm tensorflow.yml && \
-    activate tensorflow  && \
-    /opt/conda/envs/tensorflow/bin/python -m ipykernel install --user --name tensorflow --display-name "Python 3.7 (tensorflow)"  && \
-    rm -rf /var/lib/apt/lists/*
-
-# Reinforcement learning
-RUN apt update  && \
-    apt install -y xvfb ffmpeg  && \
-    /opt/conda/envs/tensorflow/bin/pip install 'gym==0.10.11' 'imageio==2.4.0' PILLOW 'pyglet==1.3.2' pyvirtualdisplay && \
-    /opt/conda/envs/tensorflow/bin/pip install --upgrade tensorflow-probability && \
-    /opt/conda/envs/tensorflow/bin/pip install tf-agents  && \
-    rm -rf /var/lib/apt/lists/* 
-
-# R pre-requisites
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends fonts-dejavu gfortran \
-    gcc && apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# R
-#RUN conda install -c r ipython-notebook r-irkernel
-RUN apt-get update && \
-    apt-get install -y r-base && \
-    conda install -c r r-irkernel r-essentials -c conda-forge && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY packages.r /root/packages.r
-
-RUN ln -s /bin/tar /bin/gtar && \
-    Rscript /root/packages.r
-
-WORKDIR /root/
-
+RUN conda install -y scikit-learn scipy pandas pandas-datareader matplotlib pillow tqdm requests h5py pyyaml flask boto3
+RUN pip install bayesian-optimization gym kaggle 
+RUN conda install pytorch==1.13.1 torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+RUN git clone --depth 1 https://github.com/jeffheaton/t81_558_deep_learning
+COPY --chown=nbuser readme_t81_558.ipynb ${HOME}/readme_t81_558.ipynb
 EXPOSE 8888
-
-CMD ["sh", "-c", "jupyter notebook --ip=0.0.0.0 --allow-root"]
-
-
+CMD conda run --no-capture-output -n base jupyter notebook --ip=0.0.0.0
