@@ -4,13 +4,13 @@ LABEL maintainer="Jeff Heaton <jeff@jeffheaton.com>"
 # Perform updates as root
 USER root
 WORKDIR /tmp
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update && \
-    apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y tzdata software-properties-common sudo build-essential git vim wget ffmpeg libssl-dev && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /tmp/*
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt-get update
+RUN apt-get upgrade -y
+RUN apt-get install -y tzdata software-properties-common sudo build-essential git vim wget ffmpeg libssl-dev
+RUN rm -rf /var/lib/apt/lists/*
+RUN rm -rf /tmp/*
 
 # Create notebook user
 ENV NB_USER nbuser
