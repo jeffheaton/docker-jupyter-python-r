@@ -1,6 +1,10 @@
 FROM ubuntu:22.04
 LABEL maintainer="Jeff Heaton <jeff@jeffheaton.com>"
 
+# For some reason Dockerhub hangs if I do not specify the timezone as something
+ENV TZ=Etc/GMT
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # Perform updates as root
 USER root
 WORKDIR /tmp
