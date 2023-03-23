@@ -1,54 +1,43 @@
-FROM ubuntu:22.04
+FROM tensorflow/tensorflow:2.11.1-gpu
 LABEL maintainer="Jeff Heaton <jeff@jeffheaton.com>"
 
-# For some reason Dockerhub hangs if I do not specify the timezone as something
-ENV TZ=Etc/GMT
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+ENV TF_CPP_MIN_LOG_LEVEL=3
+ENV TF_CPP_MIN_LOG_LEVEL=3
 
-# Perform updates as root
-USER root
-WORKDIR /tmp
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update && \
-    apt-get update && \
+RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y tzdata software-properties-common sudo build-essential git vim wget ffmpeg libssl-dev && \
+    apt-get install -y tzdata software-properties-common sudo build-essential git vim wget ffmpeg libssl-dev python3-dev && \
+    ln -fs /usr/share/zoneinfo/Etc/GMT /etc/localtime && \
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
     rm -rf /tmp/*
 
-# Create notebook user
-ENV NB_USER nbuser
-ENV NB_UID 1000
-ENV HOME /content/
-RUN useradd -m -s /bin/bash -d ${HOME} -N -G sudo -u $NB_UID $NB_USER
-WORKDIR ${HOME}
-USER ${NB_USER}
+WORKDIR /content/
+RUN pip install \
+    jupyter==1.0.0 \
+    jupyterlab==3.6.2 \
+    bayesian-optimization==1.4.2 \
+    gym==0.26.2 \
+    kaggle==1.5.13 \
+    scikit-learn==1.2.2 \
+    scipy==1.10.1 \
+    pandas==1.5.3 \
+    pandas-datareader==0.10.0 \
+    matplotlib==3.7.1 \
+    Pillow==9.4.0 \
+    tqdm==4.65.0 \
+    requests==2.28.2 \
+    h5py==3.8.0 \
+    PyYAML==6.0 \
+    Flask==2.2.3 \
+    boto3==1.26.97 && \
+    git clone --depth 1 https://github.com/jeffheaton/t81_558_deep_learning && \
+    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 
 
-# Miniconda
-ENV MINI_PATH ${HOME}/miniconda
-RUN  \
-    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
-    /bin/bash ~/miniconda.sh -b -p ${MINI_PATH} && \
-    rm ~/miniconda.sh && \
-    rm -rf /var/lib/apt/lists/* && \
-    echo 'export PATH='+${MINI_PATH}+'/bin:$PATH' >> ${HOME}/.bashrc && \
-    rm -rf /tmp/*
-ENV PATH ${MINI_PATH}/bin:$PATH
-RUN conda init
+COPY start-notebook.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/start-notebook.sh && \
+    apt-get clean
+CMD ["/usr/local/bin/start-notebook.sh"]
+                                                                                                                  
 
-# Tensorflow
-RUN conda install -y jupyter && \
-    conda install -c conda-forge cudatoolkit=11.2.2 cudnn=8.1.0 && \ 
-    mkdir -p ${MINI_PATH}/etc/conda/activate.d && \
-    echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/' > ${MINI_PATH}/etc/conda/activate.d/env_vars.sh && \
-    pip install --upgrade pip && \
-    pip install tensorflow==2.11.* && \
-    rm -rf /tmp/*
-
-RUN conda install -y scikit-learn scipy pandas pandas-datareader matplotlib pillow tqdm requests h5py pyyaml flask boto3
-RUN pip install bayesian-optimization gym kaggle 
-RUN conda install pytorch==1.13.1 torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
-RUN git clone --depth 1 https://github.com/jeffheaton/t81_558_deep_learning
-COPY --chown=nbuser readme_t81_558.ipynb ${HOME}/readme_t81_558.ipynb
-EXPOSE 8888
-CMD conda run --no-capture-output -n base jupyter notebook --ip=0.0.0.0

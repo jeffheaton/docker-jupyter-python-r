@@ -16,7 +16,7 @@ Contains:
 This docker image can be run with the following command.  You should mount a local path so that your notebooks can be saved outside the Docker container.
 
 ```
-docker run -it --rm --gpus all -p 8888:8888 -v [local path]:/content/mnt/ docker-jupyter-python-r:latest
+docker run -it --rm --gpus all -p 8888:8888 -v [local path]:/content/mnt/ heatonresearch/jupyter-python-r 
 ```
 
 It is suggested that you mount a volumne to store your files. Any changes that you make to the docker container will be lost when you exit. If you wish to keep your container, then remove the --rm. See Docker command line instructions for more information on managing containers and images.
