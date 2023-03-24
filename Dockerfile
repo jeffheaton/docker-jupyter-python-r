@@ -6,7 +6,7 @@ ENV TF_CPP_MIN_LOG_LEVEL=3
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y tzdata software-properties-common sudo build-essential git vim wget ffmpeg libssl-dev python3-dev && \
+    apt-get install -y tzdata software-properties-common sudo build-essential git wget ffmpeg libssl-dev python3-dev && \
     ln -fs /usr/share/zoneinfo/Etc/GMT /etc/localtime && \
     dpkg-reconfigure --frontend noninteractive tzdata && \
     apt-get autoremove -y && \
@@ -16,6 +16,7 @@ RUN apt-get update && \
 WORKDIR /content/
 RUN pip install \
     jupyter==1.0.0 \
+    urllib3==1.26.5 \
     jupyterlab==3.6.2 \
     bayesian-optimization==1.4.2 \
     gym==0.26.2 \
